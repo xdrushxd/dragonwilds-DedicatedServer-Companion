@@ -7,12 +7,12 @@ from datetime import datetime, timezone
 
 app = Flask(__name__)
 
-CONTAINER = "runescape-dragonwilds"
-MAX_PLAYERS = 6
+CONTAINER = os.getenv("CONTAINER", "runescape-dragonwilds")
+MAX_PLAYERS = int(os.getenv("MAX_PLAYERS", "6"))
 LOG_LINES = "15000"
 
 # Change to the location where your wolrd save is.
-SAVE_PATH = "/opt/dragonwilds/server-files/RSDragonwilds/Saved/SaveGames"
+SAVE_PATH = os.getenv("SAVE_PATH", "/savegames")
 
 
 def run_cmd(cmd):
