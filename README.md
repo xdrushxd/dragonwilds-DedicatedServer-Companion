@@ -1,11 +1,31 @@
-# Companion API for RuneScape: Dragonwilds dedicated servers with Homepage integration, live player monitoring and server statistics.
+# Dragonwilds Dedicated Server Companion
 
-A lightweight companion API for RuneScape: Dragonwilds dedicated servers.
+A lightweight companion API for RuneScape: Dragonwilds Dedicated Servers.
 
-Features:
+Designed for Homepage dashboards, homelabs and self-hosted game servers.
+
+## Features
+
 - Live player count
-- Player names
+- Live player names
 - Server uptime
-- Last save detection
+- Last save detection using save-file modification time
+- World name detection
 - CPU and RAM usage
 - Homepage dashboard integration
+- REST API endpoint
+
+## API Output
+
+```json
+{
+  "status": "online",
+  "server": "Dragonwilds",
+  "players_online": 1,
+  "max_players": 6,
+  "players_text": "xdrushxd",
+  "uptime": "16h 15m",
+  "last_save": "4m ago",
+  "memory": "1.7GiB",
+  "cpu": "6.5%"
+}
