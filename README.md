@@ -4,6 +4,11 @@ A lightweight companion API for RuneScape: Dragonwilds Dedicated Servers.
 
 Designed for Homepage dashboards, homelabs and self-hosted game servers.
 
+## Screenshot
+
+![Homepage](images/Dragonwilds.png)
+![Homepage](images/Dragonwilds2.png)
+
 ## Features
 
 - Live player count
