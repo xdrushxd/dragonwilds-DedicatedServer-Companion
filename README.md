@@ -1,4 +1,4 @@
-# Dragonwilds Dedicated Server Companion
+# Companion API for RuneScape: Dragonwilds dedicated servers with Homepage integration, live player monitoring and server statistics.
 
 A lightweight companion API for RuneScape: Dragonwilds dedicated servers.
 
