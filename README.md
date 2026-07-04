@@ -6,6 +6,7 @@ Designed for Homepage dashboards, homelabs and self-hosted game servers.
 
 ## Screenshot
 
+![Homepage](images/Dragonwilds3.png)
 ![Homepage](images/Dragonwilds.png)
 ![Homepage](images/Dragonwilds2.png)
 
@@ -19,6 +20,7 @@ Designed for Homepage dashboards, homelabs and self-hosted game servers.
 - CPU and RAM usage
 - Homepage dashboard integration
 - REST API endpoint
+
 
 ## API Output
 
