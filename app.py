@@ -1,247 +1,95 @@
 from flask import Flask, jsonify
-import subprocess
-import re
-import time
-import os
-from datetime import datetime, timezone
+import config
+from state import get_state
+from monitor import start_monitor
+from dockerstats import start_dockerstats
+from savewatcher import start_savewatcher
 
 app = Flask(__name__)
-
-CONTAINER = os.getenv("CONTAINER", "runescape-dragonwilds")
-MAX_PLAYERS = int(os.getenv("MAX_PLAYERS", "6"))
-LOG_LINES = "15000"
-
-# Change to the location where your wolrd save is.
-SAVE_PATH = os.getenv("SAVE_PATH", "/savegames")
-
-
-def run_cmd(cmd):
-    result = subprocess.run(cmd, capture_output=True, text=True)
-    return result.stdout.strip()
-
-
-def get_logs():
-    return run_cmd([
-        "docker",
-        "logs",
-        "--tail",
-        LOG_LINES,
-        CONTAINER
-    ])
-
-
-def seconds_to_human(seconds):
-    seconds = max(0, int(seconds))
-
-    days = seconds // 86400
-    hours = (seconds % 86400) // 3600
-    minutes = (seconds % 3600) // 60
-    secs = seconds % 60
-
-    if days:
-        return f"{days}d {hours}h {minutes}m"
-
-    if hours:
-        return f"{hours}h {minutes}m"
-
-    if minutes:
-        return f"{minutes}m"
-
-    return f"{secs}s"
-
-
-def get_last_save():
-    newest = None
-
-    for root, dirs, files in os.walk(SAVE_PATH):
-        for file in files:
-            path = os.path.join(root, file)
-
-            try:
-                mtime = os.path.getmtime(path)
-            except:
-                continue
-
-            if newest is None or mtime > newest:
-                newest = mtime
-
-    if newest is None:
-        return "Unknown"
-
-    return seconds_to_human(time.time() - newest) + " ago"
-
-
-def get_players():
-    logs = get_logs()
-
-    online = {}
-
-    for line in logs.splitlines():
-
-        added = re.search(
-            r"Player ADDED to session \[(.*?)\]-\[(.*?)\]",
-            line
-        )
-
-        if added:
-            account = added.group(1)
-            name = added.group(2)
-
-            online[account] = name
-            continue
-
-        removed = re.search(
-            r"Player Removed from session \[(.*?)\]-\[(.*?)\]",
-            line
-        )
-
-        if removed:
-            account = removed.group(1)
-            online.pop(account, None)
-
-    return list(online.values())
-
-
-def get_world():
-    logs = get_logs()
-
-    match = re.search(
-        r"Save completed SUCCESSFULLY \(slot:\s*(.*?)\)",
-        logs
-    )
-
-    if match:
-        return match.group(1)
-
-    return "Unknown"
-
-
-def get_version():
-    logs = get_logs()
-
-    patterns = [
-        r"version[:= ]+([0-9A-Za-z\.\-_]+)",
-        r"build[:= ]+([0-9A-Za-z\.\-_]+)",
-        r"server version[:= ]+([0-9A-Za-z\.\-_]+)"
-    ]
-
-    for pattern in patterns:
-        m = re.search(pattern, logs, re.IGNORECASE)
-
-        if m:
-            return m.group(1)
-
-    return "Unknown"
-
-
-def get_uptime():
-
-    started = run_cmd([
-        "docker",
-        "inspect",
-        "-f",
-        "{{.State.StartedAt}}",
-        CONTAINER
-    ])
-
-    try:
-        started_dt = datetime.fromisoformat(
-            started.replace("Z", "+00:00")
-        )
-
-        now = datetime.now(timezone.utc)
-
-        return seconds_to_human(
-            (now - started_dt).total_seconds()
-        )
-
-    except:
-        return "Unknown"
-
-
-def get_stats():
-
-    output = run_cmd([
-        "docker",
-        "stats",
-        "--no-stream",
-        "--format",
-        "{{.CPUPerc}}|{{.MemUsage}}",
-        CONTAINER
-    ])
-
-    if "|" not in output:
-        return {
-            "cpu": "Unknown",
-            "memory": "Unknown"
-        }
-
-    cpu, memory = output.split("|", 1)
-
-    # Alleen gebruikt RAM tonen
-    memory = memory.split("/")[0].strip()
-
-    return {
-        "cpu": cpu,
-        "memory": memory
-    }
 
 
 @app.route("/status")
 def status():
-
-    players = get_players()
-    stats = get_stats()
-
-    return jsonify({
-
-        "status": "online",
-
-        "server": "Dragonwilds",
-
-        "world": get_world(),
-
-        "version": get_version(),
-
-        "players_online": len(players),
-
-        "max_players": MAX_PLAYERS,
-
-        "players": players,
-
-        "players_text": ", ".join(players) if players else "None",
-
-        "memory": stats["memory"],
-
-        "cpu": stats["cpu"],
-
-        "uptime": get_uptime(),
-
-        "last_save": get_last_save(),
-
-        "updated": int(time.time())
-
-    })
+    return jsonify(get_state())
 
 
 @app.route("/")
 def index():
+    return """
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Dragonwilds Companion</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body { background:#0f1117; color:#e5e7eb; font-family:Arial,sans-serif; margin:0; padding:30px; }
+    .card { max-width:900px; margin:auto; background:#171a23; border-radius:18px; padding:28px; box-shadow:0 10px 30px #0006; }
+    h1 { margin-top:0; color:#f59e0b; }
+    .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:16px; margin-top:20px; }
+    .box { background:#222633; padding:18px; border-radius:14px; }
+    .label { color:#9ca3af; font-size:13px; }
+    .value { font-size:24px; font-weight:bold; margin-top:6px; }
+    ul { padding-left:20px; }
+    .online { color:#22c55e; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1> Dragonwilds Companion</h1>
+    <p class="online"> Server Online</p>
 
-    return jsonify({
+    <div class="grid">
+      <div class="box"><div class="label">Players</div><div class="value" id="players">...</div></div>
+      <div class="box"><div class="label">Names</div><div class="value" id="names">...</div></div>
+      <div class="box"><div class="label">World</div><div class="value" id="world">...</div></div>
+      <div class="box"><div class="label">Uptime</div><div class="value" id="uptime">...</div></div>
+      <div class="box"><div class="label">Last Save</div><div class="value" id="save">...</div></div>
+      <div class="box"><div class="label">CPU</div><div class="value" id="cpu">...</div></div>
+      <div class="box"><div class="label">RAM</div><div class="value" id="ram">...</div></div>
+      <div class="box"><div class="label">Version</div><div class="value" id="version">...</div></div>
+    </div>
 
-        "message": "Dragonwilds Companion",
+    <h2>Recent Events</h2>
+    <ul id="events"></ul>
+  </div>
 
-        "endpoint": "/status"
+<script>
+async function loadStatus() {
+  const res = await fetch('/status');
+  const s = await res.json();
 
-    })
+  document.getElementById('players').innerText = `${s.players_online} / ${s.max_players}`;
+  document.getElementById('names').innerText = s.players_text;
+  document.getElementById('world').innerText = s.world;
+  document.getElementById('uptime').innerText = s.uptime;
+  document.getElementById('save').innerText = s.last_save;
+  document.getElementById('cpu').innerText = s.cpu;
+  document.getElementById('ram').innerText = s.memory;
+  document.getElementById('version').innerText = s.version;
 
+  const events = document.getElementById('events');
+  events.innerHTML = '';
+  (s.events || []).forEach(e => {
+    const li = document.createElement('li');
+    li.innerHTML =
+        `<span style="color:#9ca3af;">[${e.timestamp}]</span> ${e.message}`;
+    events.appendChild(li);
+});
+}
+
+loadStatus();
+setInterval(loadStatus, 5000);
+</script>
+</body>
+</html>
+"""
 
 if __name__ == "__main__":
+    start_monitor()
+    start_dockerstats()
+    start_savewatcher()
 
     app.run(
-
         host="0.0.0.0",
-
-        port=9876
-
+        port=config.PORT
     )
