@@ -7,6 +7,11 @@ Designed for Homepage dashboards, homelabs and self-hosted game servers.
 ## Screenshot
 
 ![Homepage](images/Dragonwilds3.png)
+Open the webdashboard:
+
+```text
+http://YOUR_DOCKER_HOST_IP:9876
+```
 ![Homepage](images/Dragonwilds.png)
 ![Homepage](images/Dragonwilds2.png)
 
@@ -80,7 +85,7 @@ Verify that it is running:
 docker ps
 ```
 
-Open:
+Open the API:
 
 ```text
 http://YOUR_DOCKER_HOST_IP:9876/status
