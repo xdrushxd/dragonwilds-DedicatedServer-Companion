@@ -1,6 +1,7 @@
 import time
 from threading import Lock
 from datetime import datetime
+import config
 
 _lock = Lock()
 
@@ -22,10 +23,10 @@ state = {
 def add_event(message):
     with _lock:
         state["events"].insert(0, {
-         "timestamp": datetime.now().strftime("%H:%M:%S"),
-         "message": message
-})
-        state["events"] = state["events"][:10]
+            "timestamp": datetime.now().strftime("%H:%M:%S"),
+            "message": message
+        })
+        state["events"] = state["events"][:25]
         state["updated"] = int(time.time())
 
 
@@ -41,6 +42,12 @@ def remove_player(account, name=None):
         old_name = state["players"].pop(account, None)
         state["updated"] = int(time.time())
     add_event(f"{name or old_name or account} left")
+
+
+def clear_players():
+    with _lock:
+        state["players"] = {}
+        state["updated"] = int(time.time())
 
 
 def update_field(key, value):
@@ -59,7 +66,7 @@ def get_state():
             "world": state["world"],
             "version": state["version"],
             "players_online": len(players),
-            "max_players": int(__import__("config").MAX_PLAYERS),
+            "max_players": config.MAX_PLAYERS,
             "players": players,
             "players_text": ", ".join(players) if players else "None",
             "cpu": state["cpu"],
